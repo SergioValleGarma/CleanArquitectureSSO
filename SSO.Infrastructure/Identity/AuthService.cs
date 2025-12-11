@@ -63,8 +63,12 @@ namespace SSO.Infrastructure.Identity
 
             var result = await _userManager.CreateAsync(user, password);
 
-            if (!result.Succeeded)
+            if (result.Succeeded)
             {
+                //asignar rol por defecto
+                await _userManager.AddToRoleAsync(user, "User");
+                return user.Id;
+            } else{
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
                 throw new Exception($"Error al registrar: {errors}");
             }
@@ -74,6 +78,8 @@ namespace SSO.Infrastructure.Identity
 
         private string GenerateToken(ApplicationUser user)
         {
+            var userRoles = _userManager.GetRolesAsync(user).Result;
+
             var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id),
@@ -81,7 +87,11 @@ namespace SSO.Infrastructure.Identity
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim("uid", user.Id)
             };
-
+            //agregar cada rol como claim
+            foreach (var role in userRoles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
             // Aquí puedes agregar roles a los claims si los tienes
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key));
