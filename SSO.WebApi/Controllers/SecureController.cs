@@ -17,7 +17,7 @@ namespace SSO.WebApi.Controllers
 
             return Ok(new
             {
-                Mensaje = "¡Acceso Autorizado! Estas viendo datos protegidos.",
+                Mensaje = "¡Acceso Autorizado! Estas viendo datos protegidos, no admin.",
                 UsuarioId = userId,
                 UsuarioEmail = email,
                 HoraServidor = DateTime.UtcNow
