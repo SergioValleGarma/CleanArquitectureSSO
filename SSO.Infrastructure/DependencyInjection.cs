@@ -31,7 +31,7 @@ namespace SSO.Infrastructure
 
             // 4. Servicios
             services.AddTransient<IAuthService, AuthService>();
-
+            services.AddTransient<IUserService, UserService>();
             // 5. Autenticación JWT
             services.AddAuthentication(options =>
             {
