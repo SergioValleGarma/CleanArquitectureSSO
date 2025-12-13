@@ -86,13 +86,17 @@ using (var scope = app.Services.CreateScope())
     var context = services.GetRequiredService<SSO.Infrastructure.Persistence.Contexts.ApplicationDbContext>();
     var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
 
-    // PASO A: Crear roles básicos
-    await SSO.Infrastructure.Persistence.IdentityDataSeeder.SeedRolesAsync(roleManager);
+    // Inyectamos también el UserManager para crear usuarios
+    var userManager = services.GetRequiredService<UserManager<SSO.Infrastructure.Identity.ApplicationUser>>();
 
-    // PASO B: Llenar la tabla SystemPermissions (Catálogo)
+    // 1. Crear Roles y Permisos (Estructura)
+    await SSO.Infrastructure.Persistence.IdentityDataSeeder.SeedRolesAsync(roleManager);
     await SSO.Infrastructure.Persistence.IdentityDataSeeder.SeedPermissionsAsync(context);
 
-    // PASO C: ¡CRUCIAL! Darle esos permisos al Rol Admin
+    // 2. NUEVO: Crear el Usuario Admin por defecto
+    await SSO.Infrastructure.Persistence.IdentityDataSeeder.SeedDefaultAdminAsync(userManager);
+
+    // 3. Asignar todos los permisos al Rol Admin (y por ende al usuario que acabamos de crear)
     await SSO.Infrastructure.Persistence.IdentityDataSeeder.AssignAllPermissionsToAdminAsync(roleManager, context);
 }
 

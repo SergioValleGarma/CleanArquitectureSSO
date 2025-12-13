@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using SSO.Domain.Entities;
 using SSO.Infrastructure.Persistence.Contexts;
-using System;
+using SSO.Infrastructure.Identity;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -45,6 +45,35 @@ namespace SSO.Infrastructure.Persistence
 
                 await context.SystemPermissions.AddRangeAsync(permissions);
                 await context.SaveChangesAsync();
+            }
+        }
+
+        public static async Task SeedDefaultAdminAsync(UserManager<ApplicationUser> userManager)
+        {
+            var defaultUser = new ApplicationUser
+            {
+                UserName = "admin@sistema.com",
+                Email = "admin@sistema.com",
+                Nombre = "Administrador",
+                Apellido = "Sistema",
+                EmailConfirmed = true,
+                PhoneNumberConfirmed = true
+            };
+
+            if (userManager.Users.All(u => u.Id != defaultUser.Id))
+            {
+                var user = await userManager.FindByEmailAsync(defaultUser.Email);
+                if (user == null)
+                {
+                    // 1. Crear el usuario con una contraseña segura por defecto
+                    var result = await userManager.CreateAsync(defaultUser, "Admin123!");
+
+                    if (result.Succeeded)
+                    {
+                        // 2. Asignarle el rol de Admin
+                        await userManager.AddToRoleAsync(defaultUser, "Admin");
+                    }
+                }
             }
         }
 
