@@ -65,5 +65,38 @@ namespace SSO.Infrastructure.Identity
                 .Select(r => r.Name)
                 .ToListAsync();
         }
+
+        public async Task<string> CreateUserAsync(string email, string password, string nombre, string apellido, string role)
+        {
+            var user = new ApplicationUser
+            {
+                UserName = email,
+                Email = email,
+                Nombre = nombre,
+                Apellido = apellido
+            };
+
+            var result = await _userManager.CreateAsync(user, password);
+            if (!result.Succeeded) throw new Exception(string.Join(", ", result.Errors.Select(e => e.Description)));
+
+            if (!string.IsNullOrEmpty(role) && await _roleManager.RoleExistsAsync(role))
+            {
+                await _userManager.AddToRoleAsync(user, role);
+            }
+            else
+            {
+                await _userManager.AddToRoleAsync(user, "User"); // Rol por defecto
+            }
+
+            return user.Id;
+        }
+
+        public async Task<bool> DeleteUserAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return false;
+            var result = await _userManager.DeleteAsync(user);
+            return result.Succeeded;
+        }
     }
 }

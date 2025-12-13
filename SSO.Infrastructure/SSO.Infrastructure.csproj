@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SSO.Application\SSO.Application.csproj" />
+    <ProjectReference Include="..\SSO.Domain\SSO.Domain.csproj" />
   </ItemGroup>
 
 </Project>

@@ -12,6 +12,7 @@ namespace SSO.Application.Common.Interfaces
         Task<List<UserDto>> GetAllUsersAsync();
         Task<bool> UpdateUserRoleAsync(string userId, string roleName);
         Task<List<string>> GetAllRolesAsync();
-        //Task<List<string>> GetUserRolesAsync(string userId);
+        Task<string> CreateUserAsync(string email, string password, string nombre, string apellido, string role);
+        Task<bool> DeleteUserAsync(string userId);
     }
 }

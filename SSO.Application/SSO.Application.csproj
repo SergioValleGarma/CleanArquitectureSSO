@@ -15,6 +15,12 @@
     <Folder Include="Common\Behaviors\" />
     <Folder Include="Common\Mappings\" />
     <Folder Include="Common\Models\" />
+    <Folder Include="Features\Roles\Commands\" />
+    <Folder Include="Features\Roles\Queries\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SSO.Domain\SSO.Domain.csproj" />
   </ItemGroup>
 
 </Project>

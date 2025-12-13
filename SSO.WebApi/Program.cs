@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.OpenApi.Models;
 using SSO.Application;
+using SSO.Application.Common.Security;
 using SSO.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -53,6 +54,16 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod()
             .AllowAnyHeader());
 });
+builder.Services.AddAuthorization(options =>
+{
+    // Registramos una política por cada permiso del sistema.
+    // El nombre de la política será IGUAL al valor del permiso (ej: "Permissions.Users.View")
+    foreach (var permission in Permissions.GetAll())
+    {
+        options.AddPolicy(permission, policy => policy.RequireClaim("Permission", permission));
+    }
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -71,9 +82,18 @@ app.MapControllers();
 
 using (var scope = app.Services.CreateScope())
 {
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-    // Llamamos al Seeder
+    var services = scope.ServiceProvider;
+    var context = services.GetRequiredService<SSO.Infrastructure.Persistence.Contexts.ApplicationDbContext>();
+    var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+
+    // PASO A: Crear roles básicos
     await SSO.Infrastructure.Persistence.IdentityDataSeeder.SeedRolesAsync(roleManager);
+
+    // PASO B: Llenar la tabla SystemPermissions (Catálogo)
+    await SSO.Infrastructure.Persistence.IdentityDataSeeder.SeedPermissionsAsync(context);
+
+    // PASO C: ¡CRUCIAL! Darle esos permisos al Rol Admin
+    await SSO.Infrastructure.Persistence.IdentityDataSeeder.AssignAllPermissionsToAdminAsync(roleManager, context);
 }
 
 app.Run();

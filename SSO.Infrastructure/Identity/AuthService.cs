@@ -1,15 +1,11 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using System;
-using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
-using System.Security.Claims;
-using System.Text;
-using System.Threading.Tasks;
 using SSO.Application.Common.Interfaces;
 using SSO.Application.Features.Auth.Models;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace SSO.Infrastructure.Identity
 {
@@ -17,15 +13,18 @@ namespace SSO.Infrastructure.Identity
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly RoleManager<IdentityRole> _roleManager; // <--- 1. NUEVO: Inyectar RoleManager
         private readonly JwtSettings _jwtSettings;
 
         public AuthService(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
+            RoleManager<IdentityRole> roleManager, // <--- 1. NUEVO
             IOptions<JwtSettings> jwtSettings)
         {
             _userManager = userManager;
             _signInManager = signInManager;
+            _roleManager = roleManager; // <--- 1. NUEVO
             _jwtSettings = jwtSettings.Value;
         }
 
@@ -39,8 +38,8 @@ namespace SSO.Infrastructure.Identity
             if (!result.Succeeded)
                 throw new Exception("Credenciales inválidas.");
 
-            // Generar Token JWT
-            var token = GenerateToken(user);
+            // CAMBIO: Ahora GenerateToken es asíncrono porque consulta a la BD
+            var token = await GenerateToken(user);
 
             return new AuthResponse
             {
@@ -63,22 +62,22 @@ namespace SSO.Infrastructure.Identity
 
             var result = await _userManager.CreateAsync(user, password);
 
-            if (result.Succeeded)
+            if (!result.Succeeded)
             {
-                //asignar rol por defecto
-                await _userManager.AddToRoleAsync(user, "User");
-                return user.Id;
-            } else{
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
                 throw new Exception($"Error al registrar: {errors}");
             }
 
+            // Asignar rol por defecto
+            await _userManager.AddToRoleAsync(user, "User");
+
             return user.Id;
         }
 
-        private string GenerateToken(ApplicationUser user)
+        // CAMBIO: Convertido a Task<string> async
+        private async Task<string> GenerateToken(ApplicationUser user)
         {
-            var userRoles = _userManager.GetRolesAsync(user).Result;
+            var userRoles = await _userManager.GetRolesAsync(user);
 
             var claims = new List<Claim>
             {
@@ -87,12 +86,24 @@ namespace SSO.Infrastructure.Identity
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim("uid", user.Id)
             };
-            //agregar cada rol como claim
-            foreach (var role in userRoles)
+
+            foreach (var roleName in userRoles)
             {
-                claims.Add(new Claim(ClaimTypes.Role, role));
+                // 1. Agregar el Rol al token
+                claims.Add(new Claim(ClaimTypes.Role, roleName));
+
+                // 2. NUEVO: Buscar el Rol en la BD para sacar sus Claims (Permisos)
+                var role = await _roleManager.FindByNameAsync(roleName);
+                if (role != null)
+                {
+                    var roleClaims = await _roleManager.GetClaimsAsync(role);
+                    foreach (var claim in roleClaims)
+                    {
+                        // Aquí se agregan "Permissions.Users.View", etc. al token
+                        claims.Add(claim);
+                    }
+                }
             }
-            // Aquí puedes agregar roles a los claims si los tienes
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
