@@ -8,7 +8,7 @@ git clone https://github.com/SergioValleGarma/CleanArquitectureSSO.git
 Add-Migration crearDBSSO   
 Update-Database 
 
-## credenciales
+# credenciales de acceso
   "email": "admin@sistema.com",
   "password": "Admin123!",
   "nombre": "Administrador",
