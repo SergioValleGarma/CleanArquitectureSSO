@@ -11,5 +11,13 @@ namespace SSO.Application.Common.Interfaces
     {
         Task<AuthResponse> LoginAsync(string email, string password);
         Task<string> RegisterAsync(string email, string password, string nombre, string apellido);
+        // Paso 1: Obtener la clave para mostrar el QR
+        Task<TwoFactorSetupDto> GetTwoFactorSetupAsync(string userId);
+
+        // Paso 2: Verificar código y activar 2FA
+        Task<bool> EnableTwoFactorAsync(string userId, string code);
+
+        // Login Paso 2: Verificar código al iniciar sesión
+        Task<AuthResponse> LoginTwoFactorAsync(string email, string code);
     }
 }
