@@ -16,7 +16,8 @@ namespace SSO.Application.Common.Interfaces
 
         // Paso 2: Verificar código y activar 2FA
         Task<bool> EnableTwoFactorAsync(string userId, string code);
-
+        // Paso 3: Desactivar 2FA 
+        Task<bool> DisableTwoFactorAsync(string userId);
         // Login Paso 2: Verificar código al iniciar sesión
         Task<AuthResponse> LoginTwoFactorAsync(string email, string code);
     }

@@ -10,6 +10,7 @@ namespace SSO.Application.Features.Auth.Models
     {
         public string Key { get; set; } // La clave secreta (texto)
         public string QrCodeUri { get; set; } // La URL para generar el QR
+        public bool IsEnabled { get; set; } // Indica si 2FA ya está activado
     }
 
     public class VerifyTwoFactorDto

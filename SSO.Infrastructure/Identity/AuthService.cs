@@ -58,26 +58,32 @@ namespace SSO.Infrastructure.Identity
         }
 
         // --- NUEVOS MÉTODOS 2FA ---
-
         public async Task<TwoFactorSetupDto> GetTwoFactorSetupAsync(string userId)
         {
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null) throw new Exception("Usuario no encontrado");
 
-            // Resetear clave si ya existía para asegurar una nueva
-            await _userManager.ResetAuthenticatorKeyAsync(user);
+            // CORRECCIÓN: Intentar obtener la clave existente primero
             var unformattedKey = await _userManager.GetAuthenticatorKeyAsync(user);
 
-            // Generar URI para el QR (Formato estándar otpauth)
+            // Solo si NO existe (es la primera vez), generamos una nueva.
+            if (string.IsNullOrEmpty(unformattedKey))
+            {
+                await _userManager.ResetAuthenticatorKeyAsync(user);
+                unformattedKey = await _userManager.GetAuthenticatorKeyAsync(user);
+            }
+
+            var isEnabled = await _userManager.GetTwoFactorEnabledAsync(user);
+
             var email = user.Email;
-            var appName = "MiSistemaSSO"; // El nombre que saldrá en la app del cel
+            var appName = "MiSistemaSSO";
             var qrUri = string.Format(
                 "otpauth://totp/{0}:{1}?secret={2}&issuer={0}&digits=6",
                 _urlEncoder.Encode(appName),
                 _urlEncoder.Encode(email),
                 unformattedKey);
 
-            return new TwoFactorSetupDto { Key = unformattedKey, QrCodeUri = qrUri };
+            return new TwoFactorSetupDto { Key = unformattedKey, QrCodeUri = qrUri, IsEnabled = isEnabled };
         }
 
         public async Task<bool> EnableTwoFactorAsync(string userId, string code)
@@ -95,19 +101,26 @@ namespace SSO.Infrastructure.Identity
             return false;
         }
 
+        //metodo para desactivar 2FA
+        public async Task<bool> DisableTwoFactorAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) throw new Exception("Usuario no encontrado");
+            var result = await _userManager.SetTwoFactorEnabledAsync(user, false);
+            return result.Succeeded;
+        }
         public async Task<AuthResponse> LoginTwoFactorAsync(string email, string code)
         {
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null) throw new Exception("Usuario no encontrado");
 
-            // Verificar el código TOTP
-            // Nota: Para login real con SignInManager se usa TwoFactorSignInAsync, 
-            // pero como usamos JWT stateless, verificamos el token manualmente.
-            var isValid = await _userManager.VerifyTwoFactorTokenAsync(user, _userManager.Options.Tokens.AuthenticatorTokenProvider, code);
+            // Limpieza: Quitar espacios o guiones si el usuario los puso
+            var cleanCode = code.Replace(" ", "").Replace("-", "");
+
+            var isValid = await _userManager.VerifyTwoFactorTokenAsync(user, _userManager.Options.Tokens.AuthenticatorTokenProvider, cleanCode);
 
             if (!isValid) throw new Exception("Código de seguridad inválido.");
 
-            // Código correcto -> Generar JWT
             var token = await GenerateToken(user);
             return new AuthResponse { Id = user.Id, Token = token, Email = user.Email, UserName = user.UserName };
         }

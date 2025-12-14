@@ -60,6 +60,16 @@ namespace SSO.WebApi.Controllers
             return BadRequest("Código inválido");
         }
 
+        [Authorize]
+        [HttpPost("2fa-disable")]
+        public async Task<IActionResult> DisableTwoFactor()
+        {
+            var userId = User.FindFirst("uid")?.Value;
+            var success = await _authService.DisableTwoFactorAsync(userId);
+            if (success) return Ok("2FA Desactivado correctamente");
+            return BadRequest("No se pudo desactivar 2FA");
+        }
+
         [AllowAnonymous] // Este es público porque es parte del login
         [HttpPost("login-2fa")]
         public async Task<IActionResult> Login2FA([FromBody] VerifyTwoFactorDto request)
